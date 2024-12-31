@@ -4,7 +4,6 @@ const WebSocket = require("ws");
 const { HttpsProxyAgent } = require("https-proxy-agent");
 const fs = require("fs");
 const readline = require("readline");
-const keypress = require("keypress");
 
 let sockets = [];
 let lastUpdateds = [];
