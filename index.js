@@ -102,6 +102,7 @@ function displayHeader() {
   ___) | |_| | |  __/ (_| | | | | | |  / ___ \\ | | 
  |____/ \\__|_|  \\___|\\__,_|_| |_| |_| /_/   \\_\\___|`)
   );
+  console.log(chalk.green("          El Puqus Airdrop Bot                  "));
   console.log(chalk.green("          github.com/ahlulmukh                  "));
 }
 
