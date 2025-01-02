@@ -139,9 +139,9 @@ async function getPoint(index) {
     });
 
     const { data } = response.data;
-    messages[
-      index
-    ] = `Successfully retrieved data: Total Points = ${data.totalScore}, Today Points = ${data.todayScore}, Earnings = ${data.earnings}`;
+    messages[index] = `Successfully retrieved data: Total Points = ${
+      data.totalScore ?? 0
+    }, Today Points = ${data.todayScore ?? 0}`;
 
     console.log(
       chalk.green(`Account ${index + 1} - Successfully PING the Server:\n`) +
