@@ -12,23 +12,32 @@ let messages = [];
 let userIds = [];
 let browserIds = [];
 let proxies = [];
+let accessTokens = [];
 let accounts = [];
 let useProxy = false;
 let currentAccountIndex = 0;
 
 function loadAccounts() {
-  if (!fs.existsSync("tokens.txt")) {
-    console.error("tokens.txt not found. Please add the file with token data.");
+  if (!fs.existsSync("accounts.txt")) {
+    console.error(
+      "accounts.txt not found. Please add the file with token data."
+    );
     process.exit(1);
   }
   try {
-    const data = fs.readFileSync("tokens.txt", "utf8");
+    const data = fs.readFileSync("accounts.txt", "utf8");
     accounts = data
       .split("\n")
-      .map((line) => line.trim())
-      .filter((token) => token);
+      .map((line) => {
+        const [email, password] = line.split(":");
+        if (email && password) {
+          return { email: email.trim(), password: password.trim() };
+        }
+        return null;
+      })
+      .filter((account) => account !== null);
   } catch (err) {
-    console.error("Failed to load tokens:", err);
+    console.error("Failed to load accounts:", err);
   }
 }
 
@@ -115,7 +124,7 @@ function displayAccountData(index) {
 }
 
 async function getPoint(index) {
-  const pointUrl = `https://api.allstream.ai/mobile/v1/home?imei=${browserIds[index]}`;
+  const pointUrl = `https://api.allstream.ai/web/v1/dashBoard/info`;
   const proxy = proxies[index % proxies.length];
   const agent =
     useProxy && proxy ? new HttpsProxyAgent(normalizeProxyUrl(proxy)) : null;
@@ -124,22 +133,22 @@ async function getPoint(index) {
     const response = await axios.get(pointUrl, {
       httpsAgent: agent,
       headers: {
-        Authorization: `Bearer ${accounts[index]}`,
+        Authorization: `Bearer ${accessTokens[index]}`,
         "Content-Type": "application/json",
       },
     });
 
-    const data = response.data.data;
+    const { data } = response.data;
     messages[
       index
-    ] = `Berhasil mendapatkan data: Total Points = ${data.totalPoints}, Epoch Points = ${data.epochPoints}, Earnings = ${data.earnings}`;
+    ] = `Successfully retrieved data: Total Points = ${data.totalScore}, Today Points = ${data.todayScore}, Earnings = ${data.earnings}`;
 
     console.log(
-      chalk.green(`Account ${index + 1} - Berhasil PING Ke Server:\n`) +
+      chalk.green(`Account ${index + 1} - Successfully PING the Server:\n`) +
         messages[index]
     );
 
-    if (accounts.length === 1) {
+    if (accessTokens.length === 1) {
       displayAccountData(index);
     }
   } catch (error) {
@@ -219,7 +228,9 @@ function sendRegisterMessage(index) {
 
     sockets[index].send(JSON.stringify(message));
     console.log(
-      chalk.green(`Berhasil Daftarkan browser, melanjutkan ping socket ...\n`)
+      chalk.green(
+        `Successfully registered browser, continuing to ping socket...\n`
+      )
     );
   } else {
     console.error(
@@ -248,24 +259,32 @@ async function startPinging(index) {
 }
 
 async function getUserId(index) {
-  const loginUrl = "https://api.allstream.ai/mobile/v1/auth/myInfo";
+  const loginUrl = "https://api.allstream.ai/web/v1/auth/emailLogin";
 
   const proxy = proxies[index % proxies.length];
   const agent =
     useProxy && proxy ? new HttpsProxyAgent(normalizeProxyUrl(proxy)) : null;
 
   try {
-    const response = await axios.get(loginUrl, {
-      httpsAgent: agent,
-      headers: {
-        Authorization: `Bearer ${accounts[index]}`,
-        "Content-Type": "application/json",
+    const response = await axios.post(
+      loginUrl,
+      {
+        email: accounts[index].email,
+        password: accounts[index].password,
       },
-    });
+      {
+        httpsAgent: agent,
+        headers: {
+          Authorization: `Bearer ${accessTokens[index]}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     const { data } = response.data;
-    emails[index] = data.email;
-    userIds[index] = data.uuid;
+    emails[index] = data.user.email;
+    userIds[index] = data.user.uuid;
+    accessTokens[index] = data.token;
     browserIds[index] = generateBrowserId(index);
     messages[index] = "Connected successfully";
 
