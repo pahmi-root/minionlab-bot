@@ -30,13 +30,14 @@
 
 ## Usage
 
-1. Set the `tokens.txt` and `proxy.txt (if you want to use proxy)` before running the script. Below how to setup this fie.
+1. Set the `accounts.txt` and `proxy.txt (if you want to use proxy)` before running the script. Below how to setup this fie.
 2. Configuration:
-   Modify the `tokens.txt` file with your account info
+   Modify the `accounts.txt` file with your account info
 
 ```
-eyDssad
-eyDasdasdkkc
+email:password
+email:password
+email:password
 ```
 
 Modify and set the `proxy.txt` file if you want to use proxy
