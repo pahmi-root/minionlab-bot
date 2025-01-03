@@ -1,9 +1,4 @@
-# Join Channel Tele El Puqus Airdrop For Information Airdrop
-
-- Channel Telegram : [Telegram](https://t.me/elpuqus)
-- Channel WhatsApp : [Whatsapp](https://whatsapp.com/channel/0029VavBRhGBqbrEF9vxal1R)
-
-# Stream - Ai Bot
+### Stream - Ai Bot
 
 - Register Link : [Register](https://app.allstream.ai/index?referralCode=hwlHLvIY)
 
@@ -55,9 +50,10 @@ http://username:password@ip:port
 node index.js
 ```
 
-## License
+### Stay Connected
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+- Channel Telegram : [Telegram](https://t.me/elpuqus)
+- Channel WhatsApp : [Whatsapp](https://whatsapp.com/channel/0029VavBRhGBqbrEF9vxal1R)
 
 ## Note
 
