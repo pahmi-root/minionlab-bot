@@ -47,10 +47,9 @@ class AirdropBot {
    ░    ░ ░      ░░         ░░ ░ ░    ░   ░   ░░ ░ ░ ░  ░  ░      
    ░      ░                  ░         ░       ░           ░      
 
-
 `)
     );
-    console.log(chalk.blueBright("                    El Puqus Airdrop Bot                            "));
+    console.log(chalk.blueBright("                   MinionLabs Autorun Bot                           "));
     console.log(chalk.blueBright("                    github.com/ahlulmukh                            "));
   }
 
