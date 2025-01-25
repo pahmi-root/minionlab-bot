@@ -37,14 +37,21 @@ class AirdropBot {
   private displayHeader(): void {
     console.clear();
     console.log(
-      chalk.green(` ____  _                                 _    ___ 
- / ___|| |_ _ __ ___  __ _ _ __ ___      / \\  |_ _|
- \\___ \\| __| '__/ _ \\/ _\` | '_ \` _ \\    / _ \\  | | 
-  ___) | |_| | |  __/ (_| | | | | | |  / ___ \\ | | 
- |____/ \\__|_|  \\___|\\__,_|_| |_| |_| /_/   \\_\\___|`)
+      chalk.blueBright(`▓█████ ██▓        ██▓███   █    ██   █████   █    ██   ██████     
+▓█   ▀▓██▒       ▓██░  ██  ██  ▓██▒▒██▓  ██  ██  ▓██▒▒██    ▒     
+▒███  ▒██░       ▓██░ ██▓▒▓██  ▒██░▒██▒  ██░▓██  ▒██░░ ▓██▄       
+▒▓█  ▄▒██░       ▒██▄█▓▒ ▒▓▓█  ░██░░██  █▀ ░▓▓█  ░██░  ▒   ██▒    
+░▒████░██████    ▒██▒ ░  ░▒▒█████▓ ░▒███▒█▄ ▒▒█████▓ ▒██████▒▒    
+░░ ▒░ ░ ▒░▓      ▒▓▒░ ░  ░ ▒▓▒ ▒ ▒ ░░ ▒▒░ ▒  ▒▓▒ ▒ ▒ ▒ ▒▓▒ ▒ ░    
+ ░ ░  ░ ░ ▒      ░▒ ░      ░▒░ ░ ░  ░ ▒░  ░  ░▒░ ░ ░ ░ ░▒  ░      
+   ░    ░ ░      ░░         ░░ ░ ░    ░   ░   ░░ ░ ░ ░  ░  ░      
+   ░      ░                  ░         ░       ░           ░      
+
+
+`)
     );
-    console.log(chalk.green("          El Puqus Airdrop Bot                  "));
-    console.log(chalk.green("          github.com/ahlulmukh                  "));
+    console.log(chalk.blueBright("                    El Puqus Airdrop Bot                            "));
+    console.log(chalk.blueBright("                    github.com/ahlulmukh                            "));
   }
 
   private async promptUseProxy(): Promise<boolean> {
