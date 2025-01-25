@@ -6,12 +6,12 @@ import { AccountManager } from "./AccountManager";
 import { ProxyManager } from "./ProxyManager";
 
 export class WebSocketManager {
-  private sockets: WebSocket[] = [];
-  private lastUpdateds: string[] = [];
+  private sockets: WebSocket[][] = [];
+  private lastUpdateds: string[][] = [];
   private emails: string[] = [];
-  private messages: string[] = [];
+  private messages: string[][] = [];
   private userIds: string[] = [];
-  private browserIds: string[] = [];
+  private browserIds: string[][] = [];
   private accessTokens: string[] = [];
 
   constructor(
@@ -21,17 +21,29 @@ export class WebSocketManager {
 
   initialize(useProxy: boolean): void {
     for (let i = 0; i < this.accountManager.accounts.length; i++) {
-      this.getUserId(i, useProxy);
+      this.sockets[i] = [];
+      this.lastUpdateds[i] = [];
+      this.messages[i] = [];
+      this.browserIds[i] = [];
+
+      for (let j = 0; j < this.proxyManager.proxies.length; j++) {
+        this.getUserId(i, j, useProxy);
+      }
     }
   }
 
-  private generateBrowserId(index: number): string {
-    return `browserId-${index}-${Math.random().toString(36).substring(2, 15)}`;
+  private generateBrowserId(): string {
+    const characters = 'abcdef0123456789';
+    let browserId = '';
+    for (let i = 0; i < 32; i++) {
+      browserId += characters[Math.floor(Math.random() * characters.length)];
+    }
+    return browserId;
   }
 
-  private async getUserId(index: number, useProxy: boolean): Promise<void> {
+  private async getUserId(accountIndex: number, proxyIndex: number, useProxy: boolean): Promise<void> {
     const loginUrl = "https://api.allstream.ai/web/v1/auth/emailLogin";
-    const proxy = this.proxyManager.proxies[index % this.proxyManager.proxies.length];
+    const proxy = this.proxyManager.proxies[proxyIndex];
     const agent =
       useProxy && proxy
         ? new HttpsProxyAgent(this.proxyManager.normalizeProxyUrl(proxy))
@@ -41,134 +53,135 @@ export class WebSocketManager {
       const response = await axios.post(
         loginUrl,
         {
-          email: this.accountManager.accounts[index].email,
-          password: this.accountManager.accounts[index].password,
+          email: this.accountManager.accounts[accountIndex].email,
+          password: this.accountManager.accounts[accountIndex].password,
         },
         {
           httpsAgent: agent,
           headers: {
-            Authorization: `Bearer ${this.accessTokens[index]}`,
+            Authorization: `Bearer ${this.accessTokens[accountIndex]}`,
             "Content-Type": "application/json",
           },
         }
       );
 
       const { data } = response.data;
-      this.emails[index] = data.user.email;
-      this.userIds[index] = data.user.uuid;
-      this.accessTokens[index] = data.token;
-      this.browserIds[index] = this.generateBrowserId(index);
-      this.messages[index] = "Connected successfully";
+      this.emails[accountIndex] = data.user.email;
+      this.userIds[accountIndex] = data.user.uuid;
+      this.accessTokens[accountIndex] = data.token;
+      this.browserIds[accountIndex][proxyIndex] = this.generateBrowserId();
+      this.messages[accountIndex][proxyIndex] = "Connected successfully";
 
-      await this.connectWebSocket(index, useProxy);
+      console.log(`Account ${accountIndex + 1} connected successfully with proxy ${proxyIndex + 1}`);
+      await this.connectWebSocket(accountIndex, proxyIndex, useProxy);
     } catch (error) {
       if (error instanceof Error) {
-        console.error(`Error for Account ${index + 1}:`, error.message);
+        console.error(`Error for Account ${accountIndex + 1} with proxy ${proxyIndex + 1}:`, error.message);
       } else {
         console.error("An unknown error occurred:", error);
       }
     }
   }
 
-  private async connectWebSocket(index: number, useProxy: boolean): Promise<void> {
-    if (this.sockets[index]) return;
+  private async connectWebSocket(accountIndex: number, proxyIndex: number, useProxy: boolean): Promise<void> {
+    if (this.sockets[accountIndex][proxyIndex]) return;
     const url = "wss://gw0.streamapp365.com/connect";
 
-    const proxy = this.proxyManager.proxies[index % this.proxyManager.proxies.length];
+    const proxy = this.proxyManager.proxies[proxyIndex];
     const agent =
       useProxy && proxy
         ? new HttpsProxyAgent(this.proxyManager.normalizeProxyUrl(proxy))
         : undefined;
 
     const wsOptions = agent ? { agent } : {};
-    this.sockets[index] = new WebSocket(url, wsOptions);
+    this.sockets[accountIndex][proxyIndex] = new WebSocket(url, wsOptions);
 
-    this.sockets[index].onopen = async () => {
-      this.lastUpdateds[index] = new Date().toISOString();
-      console.log(`Account ${index + 1} Connected`, this.lastUpdateds[index]);
-      this.sendRegisterMessage(index);
-      this.startPinging(index, useProxy);
+    this.sockets[accountIndex][proxyIndex].onopen = async () => {
+      this.lastUpdateds[accountIndex][proxyIndex] = new Date().toISOString();
+      console.log(`Account ${accountIndex + 1} Connected with proxy ${proxyIndex + 1}`, this.lastUpdateds[accountIndex][proxyIndex]);
+      this.sendRegisterMessage(accountIndex, proxyIndex);
+      this.startPinging(accountIndex, proxyIndex, useProxy);
     };
 
-    this.sockets[index].onmessage = async (event) => {
+    this.sockets[accountIndex][proxyIndex].onmessage = async (event) => {
       let rawData = event.data.toString();
     
       if (rawData.startsWith("{") && rawData.endsWith("}")) {
         try {
           const message = JSON.parse(rawData);
-          await this.handleMessage(index, message);
+          await this.handleMessage(accountIndex, proxyIndex, message);
         } catch (error) {
           console.error(`Error parsing JSON:`, error);
         }
       }
     };
     
-    this.sockets[index].onclose = () => {
-      console.log(`Account ${index + 1} Disconnected`);
-      this.reconnectWebSocket(index, useProxy);
+    this.sockets[accountIndex][proxyIndex].onclose = () => {
+      console.log(`Account ${accountIndex + 1} Disconnected with proxy ${proxyIndex + 1}`);
+      this.reconnectWebSocket(accountIndex, proxyIndex, useProxy);
     };
 
-    this.sockets[index].onerror = (error) => {
-      console.error(`WebSocket error for Account ${index + 1}:`, error);
+    this.sockets[accountIndex][proxyIndex].onerror = (error) => {
+      console.error(`WebSocket error for Account ${accountIndex + 1} with proxy ${proxyIndex + 1}:`, error);
     };
   }
 
-  private async reconnectWebSocket(index: number, useProxy: boolean): Promise<void> {
+  private async reconnectWebSocket(accountIndex: number, proxyIndex: number, useProxy: boolean): Promise<void> {
     const url = "wss://gw0.streamapp365.com/connect";
-    const proxy = this.proxyManager.proxies[index % this.proxyManager.proxies.length];
+    const proxy = this.proxyManager.proxies[proxyIndex];
     const agent =
       useProxy && proxy
         ? new HttpsProxyAgent(this.proxyManager.normalizeProxyUrl(proxy))
         : undefined;
 
-    if (this.sockets[index]) {
-      this.sockets[index].removeAllListeners();
+    if (this.sockets[accountIndex][proxyIndex]) {
+      this.sockets[accountIndex][proxyIndex].removeAllListeners();
     }
 
     const wsOptions = agent ? { agent } : {};
-    this.sockets[index] = new WebSocket(url, wsOptions);
+    this.sockets[accountIndex][proxyIndex] = new WebSocket(url, wsOptions);
 
-    this.sockets[index].onopen = async () => {
-      this.lastUpdateds[index] = new Date().toISOString();
-      console.log(`Account ${index + 1} Reconnected`, this.lastUpdateds[index]);
-      this.sendRegisterMessage(index);
-      this.startPinging(index, useProxy);
+    this.sockets[accountIndex][proxyIndex].onopen = async () => {
+      this.lastUpdateds[accountIndex][proxyIndex] = new Date().toISOString();
+      console.log(`Account ${accountIndex + 1} Reconnected with proxy ${proxyIndex + 1}`, this.lastUpdateds[accountIndex][proxyIndex]);
+      this.sendRegisterMessage(accountIndex, proxyIndex);
+      this.startPinging(accountIndex, proxyIndex, useProxy);
     };
 
-    this.sockets[index].onclose = () => {
-      console.log(`Account ${index + 1} Disconnected again`);
+    this.sockets[accountIndex][proxyIndex].onclose = () => {
+      console.log(`Account ${accountIndex + 1} Disconnected again with proxy ${proxyIndex + 1}`);
       setTimeout(() => {
-        this.reconnectWebSocket(index, useProxy);
+        this.reconnectWebSocket(accountIndex, proxyIndex, useProxy);
       }, 5000);
     };
 
-    this.sockets[index].onerror = (error) => {
-      console.error(`WebSocket error for Account ${index + 1}:`, error);
+    this.sockets[accountIndex][proxyIndex].onerror = (error) => {
+      console.error(`WebSocket error for Account ${accountIndex + 1} with proxy ${proxyIndex + 1}:`, error);
     };
   }
 
-  private sendRegisterMessage(index: number): void {
-    if (this.sockets[index] && this.sockets[index].readyState === WebSocket.OPEN) {
+  private sendRegisterMessage(accountIndex: number, proxyIndex: number): void {
+    if (this.sockets[accountIndex][proxyIndex] && this.sockets[accountIndex][proxyIndex].readyState === WebSocket.OPEN) {
       const message = {
         type: "register",
-        user: this.userIds[index],
-        dev: this.browserIds[index],
+        user: this.userIds[accountIndex],
+        dev: this.browserIds[accountIndex][proxyIndex],
       };
 
-      this.sockets[index].send(JSON.stringify(message));
+      this.sockets[accountIndex][proxyIndex].send(JSON.stringify(message));
       console.log(
         chalk.green(
-          `Successfully registered browser, continuing to ping socket...\n`
+          `Successfully registered browser for Account ${accountIndex + 1} with proxy ${proxyIndex + 1}, ID: ${this.browserIds[accountIndex][proxyIndex]}, continuing to ping socket...\n`
         )
       );
     } else {
       console.error(
-        `WebSocket not open for Account ${index + 1}. Unable to send message.`
+        `WebSocket not open for Account ${accountIndex + 1} with proxy ${proxyIndex + 1}. Unable to send message.`
       );
     }
   }
 
-  private async handleMessage(index: number, message: any): Promise<void> {
+  private async handleMessage(accountIndex: number, proxyIndex: number, message: any): Promise<void> {
     if (message.type === "request") {
         const { taskid, data } = message;
         const { method, url, headers, body, timeout } = data;
@@ -181,7 +194,7 @@ export class WebSocketManager {
                 signal: AbortSignal.timeout(timeout),
             });
 
-            this.sockets[index].send(
+            this.sockets[accountIndex][proxyIndex].send(
                 JSON.stringify({
                     type: "response",
                     taskid,
@@ -193,7 +206,7 @@ export class WebSocketManager {
                 })
             );
         } catch (error: any) {
-            this.sockets[index].send(
+            this.sockets[accountIndex][proxyIndex].send(
                 JSON.stringify({
                     type: "error",
                     taskid,
@@ -204,21 +217,21 @@ export class WebSocketManager {
             );
         }
     } else {
-        console.log(`Account ${index + 1} - Unhandled message type:`, message.type);
+        console.log(`Account ${accountIndex + 1} with proxy ${proxyIndex + 1} - Unhandled message type:`, message.type);
     }
 }
 
-  private startPinging(index: number, useProxy: boolean): void {
+  private startPinging(accountIndex: number, proxyIndex: number, useProxy: boolean): void {
     const pingServer = async () => {
-      if (this.sockets[index] && this.sockets[index].readyState === WebSocket.OPEN) {
-        const proxy = this.proxyManager.proxies[index % this.proxyManager.proxies.length];
+      if (this.sockets[accountIndex][proxyIndex] && this.sockets[accountIndex][proxyIndex].readyState === WebSocket.OPEN) {
+        const proxy = this.proxyManager.proxies[proxyIndex];
         const agent =
           useProxy && proxy
             ? new HttpsProxyAgent(this.proxyManager.normalizeProxyUrl(proxy))
             : undefined;
 
-        this.sockets[index].send(JSON.stringify({ type: "ping" }));
-        await this.getPoint(index, useProxy);
+        this.sockets[accountIndex][proxyIndex].send(JSON.stringify({ type: "ping" }));
+        await this.getPoint(accountIndex, proxyIndex, useProxy);
       }
 
       setTimeout(pingServer, 60000);
@@ -227,9 +240,9 @@ export class WebSocketManager {
     pingServer();
   }
 
-  private async getPoint(index: number, useProxy: boolean): Promise<void> {
+  private async getPoint(accountIndex: number, proxyIndex: number, useProxy: boolean): Promise<void> {
     const pointUrl = `https://api.allstream.ai/web/v1/dashBoard/info`;
-    const proxy = this.proxyManager.proxies[index % this.proxyManager.proxies.length];
+    const proxy = this.proxyManager.proxies[proxyIndex];
     const agent =
       useProxy && proxy
         ? new HttpsProxyAgent(this.proxyManager.normalizeProxyUrl(proxy))
@@ -239,23 +252,23 @@ export class WebSocketManager {
       const response = await axios.get(pointUrl, {
         httpsAgent: agent,
         headers: {
-          Authorization: `Bearer ${this.accessTokens[index]}`,
+          Authorization: `Bearer ${this.accessTokens[accountIndex]}`,
           "Content-Type": "application/json",
         },
       });
 
       const { data } = response.data;
-      this.messages[index] = `Successfully retrieved data: Total Points = ${
+      this.messages[accountIndex][proxyIndex] = `Successfully retrieved data: Total Points = ${
         data.totalScore ?? 0
       }, Today Points = ${data.todayScore ?? 0}`;
 
       console.log(
-        chalk.green(`Account ${index + 1} - Successfully PING the Server:\n`) +
-          this.messages[index]
+        chalk.green(`Account ${accountIndex + 1} with proxy ${proxyIndex + 1} - Successfully PING the Server:\n`) +
+          this.messages[accountIndex][proxyIndex]
       );
     } catch (error) {
       if (error instanceof Error) {
-        console.error(`Error for Account ${index + 1}:`, error.message);
+        console.error(`Error for Account ${accountIndex + 1} with proxy ${proxyIndex + 1}:`, error.message);
       } else {
         console.error("An unknown error occurred:", error);
       }
