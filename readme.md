@@ -12,7 +12,7 @@
 
 1. Clone the repository to your local machine:
    ```bash
-   git clone https://github.com/ahlulmukh/minionlab-bot.git
+   git clone https://github.com/pahmi-root/minionlab-bot.git
    ```
 2. Navigate to the project directory:
 
